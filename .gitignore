@@ -1,0 +1,18 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Environment Variables & Secrets
+.env
+
+# Database & Logs
+data/research.db
+logs/
+*.log
+
+# Cache
+__pycache__/
+*.pyc
+.DS_StoreAPI key.txt 
+API key.txt 
