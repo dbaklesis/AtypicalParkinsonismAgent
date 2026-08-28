@@ -23,7 +23,7 @@ client = OpenAI(api_key=api_key)
 # CONFIGURATION
 # ============================================================
 
-MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 # Πόσα candidate papers θα πάρουμε αρχικά από τη βάση
 CANDIDATE_LIMIT = 15

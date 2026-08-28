@@ -16,13 +16,12 @@ from summarizer_all import main as run_summarizer
 from summarize_trials import main as run_trials_summarizer
 
 # Logging Configuration (UTF-8 encoding για αποφυγή cp1253 σφαλμάτων)
-file_handler = logging.FileHandler(BASE_DIR / "agent_execution.log", encoding="utf-8")
 stream_handler = logging.StreamHandler(sys.stdout)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[file_handler, stream_handler],
+    handlers=[stream_handler],
 )
 
 
