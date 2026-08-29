@@ -357,7 +357,6 @@ def save_record(
     now = utc_now()
 
     connection = get_connection()
-
     cursor = connection.cursor()
 
     cursor.execute(
@@ -383,7 +382,7 @@ def save_record(
             publication_date = excluded.publication_date,
             doi = excluded.doi,
             pubmed_url = excluded.pubmed_url,
-            last_updated = excluded.last_updated,
+            last_updated = excluded.last_updated
         """,
         (
             record["pmid"],
