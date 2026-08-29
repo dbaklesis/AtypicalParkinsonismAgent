@@ -14,6 +14,8 @@ from screen_all import main as run_screening
 from screen_trials import main as run_trials_screening
 from summarizer_all import main as run_summarizer
 from summarize_trials import main as run_trials_summarizer
+from europe_pmc import fetch_europe_pmc_papers
+from database import save_paper # Your database insert function
 
 # Logging Configuration (UTF-8 encoding για αποφυγή cp1253 σφαλμάτων)
 stream_handler = logging.StreamHandler(sys.stdout)
@@ -25,7 +27,7 @@ logging.basicConfig(
 )
 
 
-def execute_pipeline(screen_limit: int = 5, summary_limit: int = 5):
+def execute_pipeline(screen_limit: int = 100, summary_limit: int = 100):
     logging.info("=== ΕΝΑΡΞΗ ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΗΣ ΔΙΑΔΙΚΑΣΙΑΣ AGENT ===")
 
     # Βήμα 1α: PubMed
@@ -43,6 +45,16 @@ def execute_pipeline(screen_limit: int = 5, summary_limit: int = 5):
         logging.info("[OK] Ολοκληρώθηκε η αναζήτηση στο ClinicalTrials.gov.")
     except Exception as err:
         logging.error(f"[ERROR] Σφάλμα στο ClinicalTrials.gov: {err}")
+
+    # Step 1c: Fetch Europe PMC Preprints & Papers
+    logging.info("Βήμα 1γ: Αναζήτηση στο Europe PMC...")
+    try:
+        epmc_records = fetch_europe_pmc_papers(days_back=8)
+        for record in epmc_records:
+            save_paper(record) # Insert into SQLite DB
+        logging.info("[OK] Ολοκληρώθηκε η αναζήτηση στο Europe PMC.")
+    except Exception as err:
+        logging.error(f"[ERROR] Σφάλμα στο Europe PMC: {err}")
 
     # Βήμα 2: AI Screening (Papers & Trials)
     logging.info("Βήμα 2: AI Screening...")

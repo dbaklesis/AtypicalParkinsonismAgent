@@ -78,6 +78,40 @@ def save_screening_result(
     connection.close()
 
 
+def save_paper(paper: dict):
+    """
+    Saves a paper record into the SQLite database for AI screening.
+    Supplies all required NOT NULL schema fields (first_seen, last_updated).
+    """
+    if not paper or not paper.get("pmid"):
+        return
+
+    from datetime import datetime
+    now_str = datetime.now().isoformat(timespec="seconds")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT OR IGNORE INTO papers (
+                pmid, title, abstract, condition, first_seen, last_updated, screening_status, relevant, summary_status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, 'pending', ?)
+        """, (
+            str(paper.get("pmid")),
+            str(paper.get("title", "")),
+            str(paper.get("abstract", "")),
+            str(paper.get("condition", "Atypical Parkinsonism")),
+            now_str,
+            now_str,
+            now_str
+        ))
+        conn.commit()
+    except Exception as err:
+        print(f"[ERROR] Could not save paper {paper.get('pmid')}: {err}")
+    finally:
+        conn.close()
+
 # Alias για συμβατότητα
 save_screening = save_screening_result
 
@@ -203,35 +237,41 @@ def initialize_database() -> None:
     connection = get_connection()
     cursor = connection.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS papers (
-            pmid TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            abstract TEXT,
-            journal TEXT,
-            publication_date TEXT,
-            doi TEXT,
-            pubmed_url TEXT,
-            first_seen TEXT NOT NULL,
-            last_updated TEXT NOT NULL,
-            screening_status TEXT,
-            relevant INTEGER,
-            condition TEXT,
-            study_type TEXT,
-            importance INTEGER,
-            evidence_level TEXT,
-            confidence INTEGER,
-            screening_reason TEXT,
-            screened_at TEXT,
-            relevance_type TEXT,
-            summary_el TEXT,
-            key_finding_el TEXT,
-            why_it_matters_el TEXT,
-            limitations_el TEXT,
-            summary_status TEXT,
-            sent_at TEXT
-        )
-    """)
+    def initialize_database() -> None:
+        """Create all database tables if they don't already exist."""
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS papers (
+                pmid TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                abstract TEXT,
+                journal TEXT,
+                publication_date TEXT,
+                doi TEXT,
+                pubmed_url TEXT,
+                first_seen TEXT,
+                last_updated TEXT,
+                screening_status TEXT,
+                relevant INTEGER,
+                condition TEXT,
+                study_type TEXT,
+                importance INTEGER,
+                evidence_level TEXT,
+                confidence INTEGER,
+                screening_reason TEXT,
+                screened_at TEXT,
+                relevance_type TEXT,
+                summary_el TEXT,
+                key_finding_el TEXT,
+                why_it_matters_el TEXT,
+                limitations_el TEXT,
+                summary_status TEXT,
+                sent_at TEXT,
+                created_at TEXT
+            )
+        """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS paper_topics (
@@ -277,6 +317,8 @@ def migrate_database() -> None:
         "why_it_matters_el": "TEXT",
         "limitations_el": "TEXT",
         "summary_status": "TEXT",
+        "sent_at": "TEXT",
+        "created_at": "TEXT",
     }
 
     for column, column_type in new_columns.items():
@@ -379,4 +421,4 @@ if __name__ == "__main__":
     print("Initializing research database...")
     initialize_database()
     migrate_database()
-    print("Database created at:", DATABASE_PATH)
+    print("Database created/updated at:", DATABASE_PATH)

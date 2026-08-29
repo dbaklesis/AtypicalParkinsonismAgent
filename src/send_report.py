@@ -21,57 +21,83 @@ client = OpenAI()
 
 def generate_layman_summary(papers: list, trials: list) -> str:
     """
-    Δημιουργεί μια σύντομη, εκλαϊκευμένη σύνοψη όλων των ευρημάτων.
+    Δημιουργεί μια εκτενή, πλούσια και δομημένη εκλαϊκευμένη σύνοψη
+    όλων των ευρημάτων από PubMed, Europe PMC και ClinicalTrials.gov.
     """
     content_text = ""
     if papers:
-        content_text += "ΔΗΜΟΣΙΕΥΣΕΙΣ:\n"
+        content_text += "=== ΔΗΜΟΣΙΕΥΣΕΙΣ & PREPRINTS (PubMed & Europe PMC) ===\n"
         for p in papers:
-            content_text += f"- {p['title_el']}: {p['summary_el']}\n"
+            pmid_str = str(p['pmid'])
+            source = "Europe PMC" if pmid_str.startswith("EPMC_") else "PubMed"
+            content_text += f"- [{source} | {p['condition']} | ID: {p['pmid']}]\n"
+            content_text += f"  Τίτλος: {p['title_el']}\n"
+            content_text += f"  Περίληψη: {p['summary_el']}\n"
+            content_text += f"  Κύριο Εύρημα: {p['key_finding_el']}\n"
+            content_text += f"  Γιατί Έχει Σημασία: {p['why_it_matters_el']}\n\n"
+
     if trials:
-        content_text += "\nΚΛΙΝΙΚΕΣ ΔΟΚΙΜΕΣ:\n"
+        content_text += "=== ΚΛΙΝΙΚΕΣ ΔΟΚΙΜΕΣ (ClinicalTrials.gov) ===\n"
         for t in trials:
-            content_text += f"- {t['title_el']}: {t['summary_el']}\n"
+            content_text += f"- [ClinicalTrials.gov | {t['condition']} | Φάση: {t['phase']} | NCT: {t['nct_id']}]\n"
+            content_text += f"  Τίτλος: {t['title_el']}\n"
+            content_text += f"  Παρεμβάσεις/Φάρμακα: {t['interventions']}\n"
+            content_text += f"  Στόχος Δοκιμής: {t['summary_el']}\n\n"
 
     prompt = f"""
-Είσαι ένας έμπειρος επιστημονικός δημοσιογράφος που εξηγεί νευρολογικές εξελίξεις στο ευρύ κοινό.
-Διάβασε τα παρακάτω ευρήματα για τον άτυπο παρκινσονισμό και γράψε μια αναλυτική σύνοψη(350-450 λέξεις)
-με έμφαση στα φάρμακα, που είναι σε στάδιο άμεσης ή/και μελλοντικής κυκλοφορίας στην αγορά και αυτά που είναι σε πειραματικό στάδιο,
-και σε στάδιο έρευνας.
+Είσαι ένας κορυφαίος επιστημονικός δημοσιογράφος και αναλυτής νευρολογίας, ειδικευμένος στον άτυπο παρκινσονισμό (MSA, PSP, CBS/CBD, DLB).
+
+Αποστολή σου είναι να συντάξεις μια ΠΛΟΥΣΙΑ, ΑΝΑΛΥΤΙΚΗ και ΠΕΡΙΕΚΤΙΚΗ σύνοψη (έως 2000 λέξεις) που συνθέτει ΟΛΑ τα νέα δεδομένα από PubMed, Europe PMC (preprints) και ClinicalTrials.gov σε μια ενιαία, κατανοητή εικόνα για τον ασθενή και τη φροντίδα του.
+
+⚠️ ΑΥΣΤΗΡΕΣ ΟΔΗΓΙΕΣ ΠΕΡΙΕΧΟΜΕΝΟΥ:
+1. ΑΝΑΦΕΡΟΥ ΣΕ ΣΥΓΚΕΚΡΙΜΕΝΑ ΟΝΟΜΑΤΑ: Αν υπάρχουν συγκεκριμένες ουσίες, μόρια, φάρμακα (π.χ. TPN-101, DYR533), βιοδείκτες (α-συνουκλεΐνη, tau, RT-QuIC, AQP4) ή τεχνικές (QSM, FDG-PET, wearable gait analysis), ΠΡΕΠΕΙ να αναφερθούν ονομαστικά.
+2. ΚΑΛΥΨΕ ΟΛΕΣ ΤΙΣ ΠΗΓΕΣ: Συνδύασε ευρήματα τόσο από δημοσιεύσεις όσο και από κλινικές δοκιμές/preprints χωρίς να παραλείψεις σημαντικές ανακαλύψεις.
+3. ΔΙΑΧΩΡΙΣΕ ΣΤΑΔΙΑ: Διαχώρισε σαφώς τα ευρήματα σε:
+   - Θεραπευτικές δοκιμές & Φάρμακα σε εξέλιξη (Clinical trials / interventional).
+   - Νέους Βιοδείκτες, Διάγνωση & Απεικόνιση (MRI, PET, βιοϋγρά, αισθητήρες).
+   - Βασική Έρευνα, Μηχανισμούς & Αποκατάσταση (παθολογία, φυσικοθεραπεία).
 
 ⚠️ ΣΗΜΑΝΤΙΚΗ ΟΔΗΓΙΑ ΜΟΡΦΟΠΟΙΗΣΗΣ:
-Επίστρεψε το κείμενο ΑΠΟΚΛΕΙΣΤΙΚΑ σε μορφή HTML code (χωρίς ```html codeblocks). 
-Χρησιμοποίησε tags όπως <h2>, <h3>, <p>, <ul>, <li>, <strong>, <br> για να διασφαλίσεις ότι το email θα εμφανιστεί με παραγράφους και λίστες.
+Επίστρεψε το κείμενο ΑΠΟΚΛΕΙΣΤΙΚΑ σε μορφή HTML code (χωρίς ```html codeblocks).
 
 Ακολούθησε αυστηρά την παρακάτω δομή HTML:
 
-<h2>🎯 Κύριο Συμπέρασμα </h2>
-<p>[2-3 προτάσεις που συνοψίζουν την πιο σημαντική εξέλιξη όλων των ευρημάτων μαζί.]</p>
+<h2>🎯 Κύριο Συμπέρασμα της Ημέρας</h2>
+<p>[Πλούσια παράγραφος (3-4 προτάσεις) που δίνει το κεντρικό στίγμα όλων των σημερινών ευρημάτων μαζί.]</p>
 
-<h2>🔬 Σημαντικότερα Ευρήματα & Ανακαλύψεις (Αναλυτικά)</h2>
+<h2>💊 Νέες Θεραπείες & Κλινικές Δοκιμές</h2>
 <ul>
   <li>
-    <strong>[Τίτλος Έρευνας / Ουσία]:</strong> [Συγκεκριμένα στοιχεία και αποτελέσματα].
-    <br><em>👉 Τι σημαίνει αυτό για τον ασθενή;</em> [Πρακτική ερμηνεία].
+    <strong>[Όνομα Φαρμάκου / Παρέμβασης & Φάση]:</strong> [Αναλυτική περιγραφή της δράσης και των αποτελεσμάτων].
+    <br><em>👉 Τι σημαίνει για τον ασθενή:</em> [Πρακτική ερμηνεία και προοπτική].
   </li>
-  <!-- Επανάληψη για κάθε βασικό εύρημα -->
 </ul>
 
-<h2>🧪 Κλινικές Δοκιμές & Νέες Θεραπείες</h2>
-<p>[Σε τι στάδιο βρίσκονται οι δοκιμές και τι περιμένουμε στη συνέχεια.]</p>
-
-<h2>💡 Τι Κρατάμε (Επόμενα βήματα)</h2>
+<h2>🧬 Διαγνωστικοί Βιοδείκτες & Απεικόνιση</h2>
 <ul>
-  <li>[Πρακτικό συμπέρασμα 1]</li>
-  <li>[Πρακτικό συμπέρασμα 2]</li>
+  <li>
+    <strong>[Εύρημα / Τεχνική / Βιοδείκτης]:</strong> [Τι ανακαλύφθηκε και πώς βοηθά στην έγκαιρη διάγνωση ή διαφοροποίηση των νόσων].
+  </li>
+</ul>
+
+<h2>🧠 Μηχανισμοί Νόσου & Αποκατάσταση</h2>
+<ul>
+  <li>
+    <strong>[Θέμα Έρευνας / Αποκατάσταση]:</strong> [Ευρήματα για φυσικοθεραπεία, μοριακούς μηχανισμούς ή συμπτώματα].
+  </li>
+</ul>
+
+<h2>💡 Τι Κρατάμε (Πρακτικά Συμπεράσματα)</h2>
+<ul>
+  <li>[Πρακτικό συμπέρασμα 1 με βάση τα νέα δεδομένα]</li>
+  <li>[Πρακτικό συμπέρασμα 2 με βάση τα νέα δεδομένα]</li>
 </ul>
 
 Οδηγίες Στυλ:
-- Χρησιμοποίησε απλή, καθημερινή γλώσσα.
-- Απέφευγε ασαφείς φράσεις. Εξήγησε ΣΥΓΚΕΚΡΙΜΕΝΑ τα αποτελέσματα.
-- Διατήρησε έναν ενθαρρυντικό αλλά αντικειμενικό τόνο.
+- Χρησιμοποίησε καθαρά ελληνικά με ακριβή ιατρική ορολογία όπου χρειάζεται, επεξηγώντας την απλά.
+- Απέφευγε γενικόλογες φράσεις όπως "οι μελέτες δείχνουν υποσχόμενα αποτελέσματα". Γράψε ΣΥΓΚΕΚΡΙΜΕΝΑ τι βρέθηκε.
 
-Ευρήματα:
+Δεδομένα προς ανάλυση:
 {content_text}
 """
 
@@ -79,7 +105,7 @@ def generate_layman_summary(papers: list, trials: list) -> str:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
+            temperature=0.3,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -90,7 +116,7 @@ def build_email_body():
     connection = get_connection()
     cursor = connection.cursor()
 
-    # 1. Ανάκτηση Δημοσιεύσεων (PubMed)
+    # 1. Ανάκτηση Δημοσιεύσεων (PubMed & Europe PMC)
     cursor.execute("""
         SELECT pmid, title_el, summary_el, key_finding_el, why_it_matters_el, limitations_el, condition, importance
         FROM papers
@@ -112,8 +138,11 @@ def build_email_body():
     if not papers and not trials:
         return None
 
+    # Υπολογισμός συνολικού αριθμού άρθρων/δοκιμών
+    total_articles = len(papers) + len(trials)
+
     # Δημιουργία της εκλαϊκευμένης σύνοψης μέσω OpenAI
-    print("[AI] Δημιουργία εκλαϊκευμένης σύνοψης...")
+    print("[AI] Δημιουργία σύνοψης...")
     layman_summary = generate_layman_summary(papers, trials)
 
     html = f"""
@@ -137,19 +166,28 @@ def build_email_body():
         
         <!-- Εκλαϊκευμένη Σύνοψη -->
         <div class="summary-box">
-            <div class="summary-title">💡 Σύνοψη της Ημέρας (Με απλά λόγια)</div>
+            <div class="summary-title">💡 Σύνοψη της Ημέρας (Πηγές: PubMed, ClinicalTrials.gov και Europe PMC) (Αριθμός άρθρων: {total_articles})</div>
             <p>{layman_summary}</p>
         </div>
     """
 
-    # Ενότητα Δημοσιεύσεων
+    # Ενότητα Δημοσιεύσεων (PubMed & Europe PMC)
     if papers:
-        html += f"<h3>📚 Νέες Δημοσιεύσεις PubMed ({len(papers)})</h3>"
+        html += f"<h3>📚 Νέες Δημοσιεύσεις PubMed & Europe PMC ({len(papers)})</h3>"
         for p in papers:
+            pmid_str = str(p['pmid'])
+            if pmid_str.startswith("EPMC_"):
+                raw_id = pmid_str.replace("EPMC_", "")
+                article_url = f"[https://europepmc.org/article/MED/](https://europepmc.org/article/MED/){raw_id}"
+                source_label = "Europe PMC"
+            else:
+                article_url = f"[https://pubmed.ncbi.nlm.nih.gov/](https://pubmed.ncbi.nlm.nih.gov/){pmid_str}/"
+                source_label = "PubMed"
+
             html += f"""
             <div class="card">
                 <div class="meta">
-                    <span class="badge">{p['condition']}</span> | Σημαντικότητα: {p['importance']}/5 | PMID: {p['pmid']}
+                    <span class="badge">{p['condition']}</span> | Πηγή: {source_label} | Σημαντικότητα: {p['importance']}/5 | ID: <a href="{article_url}" target="_blank">{p['pmid']}</a>
                 </div>
                 <h3>{p['title_el']}</h3>
                 <p><span class="label">Περίληψη:</span> {p['summary_el']}</p>
@@ -200,14 +238,11 @@ def send_email():
     sender_password = os.getenv("SENDER_PASSWORD")
     receiver_email_raw = os.getenv("RECEIVER_EMAIL", "")
 
-    # Μετατροπή του string σε πραγματική λίστα Python (π.χ. ["email1@gmail.com", "email2@gmail.com"])
-    # Το strip() αφαιρεί τυχόν κενά διαστήματα πριν ή μετά από κάθε email.
     receiver_emails = [email.strip() for email in receiver_email_raw.split(",") if email.strip()]
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "🧠 Ενημέρωση Έρευνας: Νέες Δημοσιεύσεις & Κλινικές Δοκιμές"
     msg["From"] = sender_email
-    # Στο header "To" περνάμε το string διαχωρισμένο με κόμμα για να φαίνονται όλοι οι παραλήπτες:
     msg["To"] = ", ".join(receiver_emails)
     msg.attach(MIMEText(html_body, "html"))
 
@@ -215,7 +250,6 @@ def send_email():
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(sender_email, sender_password)
-        # ΕΔΩ: Περνάμε τη ΛΙΣΤΑ receiver_emails αντί για το απλό string
         server.sendmail(sender_email, receiver_emails, msg.as_string())
         server.quit()
         print("Το email στάλθηκε επιτυχώς!")

@@ -51,7 +51,7 @@ def main(limit: int = 15):
 
         try:
             # Πέρασμα των 2 positional arguments: (paper, abstract)
-            result = screen_paper(paper_dict, abstract_text)
+            result = screen_paper(paper_dict.get("title", ""), abstract_text)
 
             save_screening_result(
                 pmid=pmid,
