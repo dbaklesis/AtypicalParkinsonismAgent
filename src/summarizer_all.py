@@ -1,5 +1,7 @@
 import sys
 from pathlib import Path
+from database import get_connection, get_pending_summaries
+from summarizer import summarize_paper
 
 # Allow imports from src/
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,16 +11,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 
-from database import get_connection
-from summarizer import summarize_paper
-
-
 def get_pending_summaries(limit: int) -> list[dict]:
-    """
-    Return papers that are relevant and important enough
-    to receive a Greek AI summary.
-    """
-
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -37,6 +30,7 @@ def get_pending_summaries(limit: int) -> list[dict]:
             AND importance >= 4
             AND (
                 summary_status IS NULL
+                OR summary_status = 'pending'
                 OR summary_status = 'failed'
             )
         ORDER BY
@@ -48,7 +42,6 @@ def get_pending_summaries(limit: int) -> list[dict]:
     )
 
     rows = cursor.fetchall()
-
     connection.close()
 
     return [dict(row) for row in rows]
@@ -132,7 +125,7 @@ def save_summary(pmid: str, result) -> None:
     connection.close()
 
 
-def main(limit: int = 5) -> None:
+def main(limit: int = 100) -> None:
 
     print()
     print("Atypical Parkinsonism Greek Summarizer")

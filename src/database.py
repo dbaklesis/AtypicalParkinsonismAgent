@@ -372,7 +372,7 @@ def get_all_papers() -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def get_pending_papers(limit: int = 5) -> list[dict]:
+def get_pending_papers(limit: int = 100) -> list[dict]:
     connection = get_connection()
     cursor = connection.cursor()
     cursor.execute("""
@@ -385,6 +385,44 @@ def get_pending_papers(limit: int = 5) -> list[dict]:
     connection.close()
     return [dict(row) for row in rows]
 
+def get_pending_summaries(limit: int = 5) -> list[dict]:
+    """
+    Fetch relevant papers with high importance that are waiting for Greek summarization.
+    Explicitly accounts for summary_status = 'pending'.
+    """
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            pmid,
+            title,
+            abstract,
+            condition,
+            importance,
+            evidence_level
+        FROM papers
+        WHERE
+            relevant = 1
+            AND importance >= 4
+            AND (
+                summary_status IS NULL
+                OR summary_status = 'pending'
+                OR summary_status = 'failed'
+            )
+        ORDER BY
+            importance DESC,
+            publication_date DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return [dict(row) for row in rows]
 
 def mark_processing(pmid: str) -> None:
     connection = get_connection()

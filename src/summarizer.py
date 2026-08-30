@@ -1,10 +1,8 @@
 import os
 from typing import Literal
-
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-
 from database import get_connection, save_summary
 
 
@@ -117,13 +115,7 @@ All four fields MUST be written in Greek.
 
 
 def get_paper_for_summary() -> dict | None:
-    """
-    Get the first relevant high-importance paper that has not
-    yet been summarized.
-    """
-
     connection = get_connection()
-
     cursor = connection.cursor()
 
     cursor.execute(
@@ -143,6 +135,7 @@ def get_paper_for_summary() -> dict | None:
             AND importance >= 4
             AND (
                 summary_status IS NULL
+                OR summary_status = 'pending'
                 OR summary_status = 'failed'
             )
         ORDER BY
@@ -153,13 +146,9 @@ def get_paper_for_summary() -> dict | None:
     )
 
     row = cursor.fetchone()
-
     connection.close()
 
-    if row is None:
-        return None
-
-    return dict(row)
+    return dict(row) if row else None
 
 def mark_summary_processing(
     pmid: str,

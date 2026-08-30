@@ -166,7 +166,7 @@ def build_email_body():
         
         <!-- Εκλαϊκευμένη Σύνοψη -->
         <div class="summary-box">
-            <div class="summary-title">💡 Σύνοψη της Ημέρας (Πηγές: PubMed, ClinicalTrials.gov και Europe PMC) (Αριθμός άρθρων: {total_articles})</div>
+            <div class="summary-title">💡 Σύνοψη της Ημέρας (Πηγές: PubMed, ClinicalTrials.gov και Europe PMC) (Αριθμός δημοσιεύσεων: {total_articles})</div>
             <p>{layman_summary}</p>
         </div>
     """

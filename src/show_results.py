@@ -13,14 +13,14 @@ def main():
             SELECT pmid, title_el, title, condition, importance, summary_el, key_finding_el, why_it_matters_el, limitations_el 
             FROM papers 
             WHERE relevant = 1 AND summary_status = 'completed'
-            ORDER BY publication_date DESC LIMIT 5
+            ORDER BY publication_date DESC
         """
     else:
         query = """
             SELECT pmid, NULL as title_el, title, condition, importance, summary_el, key_finding_el, why_it_matters_el, limitations_el 
             FROM papers 
             WHERE relevant = 1 AND summary_status = 'completed'
-            ORDER BY publication_date DESC LIMIT 5
+            ORDER BY publication_date DESC
         """
 
     cursor.execute(query)
