@@ -424,6 +424,48 @@ def get_pending_summaries(limit: int = 5) -> list[dict]:
 
     return [dict(row) for row in rows]
 
+# In database.py
+
+def mark_telegram_sent(pmid: str) -> None:
+    """Mark a paper as notified via Telegram without touching sent_at."""
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("PRAGMA table_info(papers)")
+    columns = {row["name"] for row in cursor.fetchall()}
+    if "telegram_sent" not in columns:
+        cursor.execute("ALTER TABLE papers ADD COLUMN telegram_sent INTEGER DEFAULT 0")
+
+    cursor.execute("UPDATE papers SET telegram_sent = 1 WHERE pmid = ?", (pmid,))
+    connection.commit()
+    connection.close()
+
+
+def get_unsent_telegram_papers() -> list[dict]:
+    """Fetch completed high-importance summaries that have not been sent to Telegram."""
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("PRAGMA table_info(papers)")
+    columns = {row["name"] for row in cursor.fetchall()}
+    if "telegram_sent" not in columns:
+        cursor.execute("ALTER TABLE papers ADD COLUMN telegram_sent INTEGER DEFAULT 0")
+
+    cursor.execute("""
+        SELECT pmid, title, title_el, condition, importance, 
+               key_finding_el, why_it_matters_el, summary_el, limitations_el
+        FROM papers
+        WHERE relevant = 1
+          AND importance >= 4
+          AND summary_status = 'completed'
+          AND (telegram_sent IS NULL OR telegram_sent = 0)
+        ORDER BY publication_date DESC
+    """)
+    rows = cursor.fetchall()
+    connection.close()
+    return [dict(row) for row in rows]
+
+
 def mark_processing(pmid: str) -> None:
     connection = get_connection()
     cursor = connection.cursor()
