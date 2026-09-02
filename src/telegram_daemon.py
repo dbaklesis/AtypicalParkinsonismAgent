@@ -11,27 +11,52 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+import html
+import re
+
+def clean_html(text: str) -> str:
+    """
+    Removes unsupported HTML tags (like <sup>, <sub>, <div>, etc.) 
+    and safely escapes standard characters for Telegram HTML mode.
+    """
+    if not text:
+        return "N/A"
+    
+    # Remove unsupported HTML tags while preserving their inner text content
+    text = re.sub(r'</?(?:sup|sub|span|div|p|br|font)[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Escape special HTML characters (<, >, &) for Telegram
+    return html.escape(text)
+
 
 def send_telegram_alert(paper: dict) -> bool:
-    if not BOT_TOKEN or not CHAT_ID:
-        print("[TELEGRAM] Error: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID missing in .env")
-        return False
-
-    title = paper.get("title_el") or paper.get("title", "Χωρίς τίτλο")
-    condition = paper.get("condition", "N/A")
+    # Clean and escape all incoming text fields
+    title = clean_html(paper.get("title_el") or paper.get("title", "Χωρίς τίτλο"))
+    condition = clean_html(paper.get("condition", "N/A"))
+    pmid = clean_html(paper.get("pmid", ""))
+    key_finding = clean_html(paper.get("key_finding_el", "N/A"))
+    why_it_matters = clean_html(paper.get("why_it_matters_el", "N/A"))
+    summary = clean_html(paper.get("summary_el", "N/A"))
+    limitations = clean_html(paper.get("limitations_el", "N/A"))
     importance = paper.get("importance", 0)
-    pmid = paper.get("pmid", "")
 
+    # Construct message using ONLY Telegram-supported tags (<b>, <i>, etc.)
     message = (
         f"<b>🚨 Νέα Σημαντική Δημοσίευση ({importance}/5)</b>\n\n"
         f"<b>Πάθηση:</b> {condition}\n"
         f"<b>PMID:</b> {pmid}\n"
         f"<b>Τίτλος:</b> {title}\n\n"
-        f"<b>📌 Βασικό Ευρημα:</b>\n{paper.get('key_finding_el', 'N/A')}\n\n"
-        f"<b>💡 Γιατί έχει σημασία:</b>\n{paper.get('why_it_matters_el', 'N/A')}\n\n"
-        f"<b>🔍 Περίληψη:</b>\n{paper.get('summary_el', 'N/A')}\n\n"
-        f"<b>⚠️ Περιορισμοί:</b>\n{paper.get('limitations_el', 'N/A')}"
+        f"<b>📌 Βασικό Ευρημα:</b>\n{key_finding}\n\n"
+        f"<b>💡 Γιατί έχει σημασία:</b>\n{why_it_matters}\n\n"
+        f"<b>🔍 Περίληψη:</b>\n{summary}\n\n"
+        f"<b>⚠️ Περιορισμοί:</b>\n{limitations}"
     )
+
+    # Ensure message stays within Telegram's 4,096 character limit
+    if len(message) > 4000:
+        message = message[:3997] + "..."
+
+    # ... execute API POST request ...
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
@@ -45,8 +70,10 @@ def send_telegram_alert(paper: dict) -> bool:
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
         return True
-    except Exception as err:
+    except requests.exceptions.HTTPError as err:
         print(f"[TELEGRAM ERROR] Failed to push PMID {pmid}: {err}")
+        if err.response is not None:
+            print(f"[TELEGRAM API RESPONSE] {err.response.text}")
         return False
 
 def send_telegram_summary(summary: str) -> bool:
@@ -55,6 +82,10 @@ def send_telegram_summary(summary: str) -> bool:
         return False
 
     message = f"<b>📊 Εβδομαδιαία Εκτελεστική Σύνοψη</b>\n\n{summary}"
+
+     # Ensure message stays within Telegram's 4,096 character limit
+    if len(message) > 4000:
+        message = message[:3997] + "..."
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
