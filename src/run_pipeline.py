@@ -1,5 +1,6 @@
 import sys
 import logging
+import time
 from pathlib import Path
 
 # Ρύθμιση Paths
@@ -15,9 +16,9 @@ from screen_trials import main as run_trials_screening
 from summarizer_all import main as run_summarizer
 from summarize_trials import main as run_trials_summarizer
 from europe_pmc import fetch_europe_pmc_papers
-from database import save_paper # Your database insert function
+from database import save_paper
 
-# Logging Configuration (UTF-8 encoding για αποφυγή cp1253 σφαλμάτων)
+# Logging Configuration
 stream_handler = logging.StreamHandler(sys.stdout)
 
 logging.basicConfig(
@@ -51,7 +52,7 @@ def execute_pipeline(screen_limit: int = 100, summary_limit: int = 100):
     try:
         epmc_records = fetch_europe_pmc_papers(days_back=8)
         for record in epmc_records:
-            save_paper(record) # Insert into SQLite DB
+            save_paper(record)
         logging.info("[OK] Ολοκληρώθηκε η αναζήτηση στο Europe PMC.")
     except Exception as err:
         logging.error(f"[ERROR] Σφάλμα στο Europe PMC: {err}")
@@ -91,10 +92,22 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Run full research pipeline")
-    parser.add_argument("--screen-limit", type=int, default=300, help="Όριο screening (300 για όλα)")
+    parser.add_argument("--screen-limit", type=int, default=100, help="Όριο screening")
     parser.add_argument("--summary-limit", type=int, default=100, help="Όριο συνόψεων")
-    
+    parser.add_argument("--daemon", action="store_true", help="Εκτέλεση σε συνεχόμενο loop (Windows Service mode)")
+    parser.add_argument("--interval", type=int, default=3600, help="Χρόνος αναμονής σε δευτερόλεπτα μεταξύ των εκτελέσεων (προεπιλογή: 3600s / 1 hour)")
+
     args = parser.parse_args()
 
-    # Καλούμε το pipeline περνώντας τις νέες παραμέτρους
-    execute_pipeline(screen_limit=args.screen_limit, summary_limit=args.summary_limit)
+    if args.daemon:
+        logging.info(f"Starting pipeline daemon mode. Running every {args.interval} seconds...")
+        while True:
+            try:
+                execute_pipeline(screen_limit=args.screen_limit, summary_limit=args.summary_limit)
+            except Exception as e:
+                logging.error(f"Daemon error during pipeline execution: {e}")
+            
+            logging.info(f"Sleeping for {args.interval} seconds...")
+            time.sleep(args.interval)
+    else:
+        execute_pipeline(screen_limit=args.screen_limit, summary_limit=args.summary_limit)

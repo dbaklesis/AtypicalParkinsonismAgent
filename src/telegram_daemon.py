@@ -4,12 +4,12 @@ import time
 import requests
 from dotenv import load_dotenv
 from database import get_unsent_telegram_papers, mark_telegram_sent
+from executive_summary import generate_executive_summary
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-POLL_INTERVAL_SECONDS = 3600  # Check database every 30 min
 
 
 def send_telegram_alert(paper: dict) -> bool:
@@ -49,11 +49,31 @@ def send_telegram_alert(paper: dict) -> bool:
         print(f"[TELEGRAM ERROR] Failed to push PMID {pmid}: {err}")
         return False
 
+def send_telegram_summary(summary: str) -> bool:
+    if not BOT_TOKEN or not CHAT_ID:
+        print("[TELEGRAM] Error: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID missing in .env")
+        return False
 
-def run_daemon():
+    message = f"<b>📊 Εβδομαδιαία Εκτελεστική Σύνοψη</b>\n\n{summary}"
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+    except Exception as err:
+        print(f"[TELEGRAM ERROR] Failed to send executive summary: {err}")
+
+def run_daemon(poll_interval, days_back):
     print("=" * 60)
     print("Telegram Notification Daemon Started")
-    print(f"Monitoring DB for papers with importance >= 4 every {POLL_INTERVAL_SECONDS}s...")
+    print(f"Monitoring DB for papers with importance >= 4 every {poll_interval} seconds...")
     print("=" * 60)
 
     while True:
@@ -68,11 +88,25 @@ def run_daemon():
                     mark_telegram_sent(pmid)
                     print(f"[TELEGRAM] Sent & marked telegram_sent = 1 for {pmid}")
 
+            summary = generate_executive_summary(days_back=1)
+            if summary:
+                send_telegram_summary(summary)
+
         except Exception as e:
             print(f"[TELEGRAM DAEMON EXCEPTION] {e}")
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+       
+
+        time.sleep(poll_interval)
 
 
 if __name__ == "__main__":
-    run_daemon()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Telegram Notification Daemon")
+    parser.add_argument("--poll-interval", type=int, default=3600, help="Χρόνος αναζήτησης για νέες δημοσιεύσεις σε δευτερόλεπτα (προεπιλογή: 3600s / 1 hour)")
+    parser.add_argument("--summary-days-back", type=int, default=7, help="Χρόνος αναζήτησες δυμοσιεύσεων σε ημέρες για την περίληψη")
+
+    args = parser.parse_args()
+    
+    run_daemon(poll_interval=args.poll_interval, days_back=args.summary_days_back)
