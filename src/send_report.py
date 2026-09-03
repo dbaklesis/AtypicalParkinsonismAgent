@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from openai import OpenAI
+from executive_summary import generate_executive_summary
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SRC_DIR = BASE_DIR / "src"
@@ -154,6 +155,11 @@ def build_email_body():
     # Δημιουργία της εκλαϊκευμένης σύνοψης μέσω OpenAI
     print("[AI] Δημιουργία σύνοψης...")
     layman_summary = generate_layman_summary(papers, trials)
+    
+    summary = generate_executive_summary(days_back=7)
+    summary = f"<b>📊 Εκτελεστική Σύνοψη</b>\n\n{summary}"
+
+    
 
     html = f"""
     <html>
@@ -172,7 +178,7 @@ def build_email_body():
         </style>
     </head>
     <body>
-        <h2>🧠 Ημερήσια Ενημέρωση Άτυπου Παρκινσονισμού</h2>
+        <h2>🧠 Ενημέρωση Άτυπου Παρκινσονισμού</h2>
         
         <!-- Εκλαϊκευμένη Σύνοψη -->
         <div class="summary-box">
@@ -180,6 +186,16 @@ def build_email_body():
             <p>{layman_summary}</p>
         </div>
     """
+
+    import markdown
+
+    summary_html = markdown.markdown(
+        summary,
+        extensions=["extra", "sane_lists"]
+    )
+
+    html += f"""<div class="summary-box">{summary_html}</div>"""
+
 
     # Ενότητα Δημοσιεύσεων (PubMed & Europe PMC)
     if papers:

@@ -81,7 +81,7 @@ def send_telegram_summary(summary: str) -> bool:
         print("[TELEGRAM] Error: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID missing in .env")
         return False
 
-    message = f"<b>📊 Εβδομαδιαία Εκτελεστική Σύνοψη</b>\n\n{summary}"
+    message = f"<b>📊 Εκτελεστική Σύνοψη</b>\n\n{summary}"
 
      # Ensure message stays within Telegram's 4,096 character limit
     if len(message) > 4000:
@@ -119,7 +119,7 @@ def run_daemon(poll_interval, days_back):
                     mark_telegram_sent(pmid)
                     print(f"[TELEGRAM] Sent & marked telegram_sent = 1 for {pmid}")
 
-            summary = generate_executive_summary(days_back=1)
+            summary = generate_executive_summary(days_back)
             if summary:
                 send_telegram_summary(summary)
 
